@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 import redis
 import os
+from fastapi import UploadFile
+from fastapi import HTTPException, status
 
 app = FastAPI(
     title="Research Paper Analysis & Summarization Engine",
@@ -24,3 +26,23 @@ def check_redis():
         return {"redis": "connected"}
     except Exception as e:
         return {"redis": "disconnected", "error": str(e)}
+
+@app.post("/upload")
+async def upload_pdf(file: UploadFile):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file type. Only PDF files are accepted."
+        )
+    
+    try:
+        # Read the raw binary contents into memory
+        contents = await file.read()
+        
+        # Next step: pass 'contents' to PyMuPDF (fitz)
+        return {
+            "filename": file.filename,
+            "size_bytes": len(contents)
+        }
+    except Exception as e:
+        return {"error": str(e)}
