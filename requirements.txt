@@ -6,3 +6,4 @@ pymupdf==1.24.1
 redis==5.0.2
 celery==5.3.6
 psycopg2-binary==2.9.9
+python-multipart==0.0.9
