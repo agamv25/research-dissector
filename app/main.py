@@ -3,6 +3,7 @@ import redis
 import os
 from fastapi import UploadFile
 from fastapi import HTTPException, status
+import pymupdf
 
 app = FastAPI(
     title="Research Paper Analysis & Summarization Engine",
@@ -36,10 +37,11 @@ async def upload_pdf(file: UploadFile):
         )
     
     try:
-        # Read the raw binary contents into memory
-        contents = await file.read()
-        
-        # Next step: pass 'contents' to PyMuPDF (fitz)
+        contents = await file.read()  
+        doc = pymupdf.open(stream=contents, filetype="pdf")
+        for page in doc:
+            text = page.get_text("text", sort=True)
+            print(text)
         return {
             "filename": file.filename,
             "size_bytes": len(contents)
