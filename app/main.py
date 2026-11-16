@@ -3,7 +3,7 @@ import redis
 import os
 from fastapi import UploadFile
 from fastapi import HTTPException, status
-import pymupdf
+import fitz
 
 app = FastAPI(
     title="Research Paper Analysis & Summarization Engine",
@@ -35,11 +35,15 @@ async def upload_pdf(file: UploadFile):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid file type. Only PDF files are accepted."
         )
-    
     try:
         contents = await file.read()  
-        doc = pymupdf.open(stream=contents, filetype="pdf")
+        doc = fitz.open(stream=contents, filetype="pdf")
         for page in doc:
+            tabs_finder = page.find_tables()
+            if tabs_finder.tables:
+                for table in tabs_finder.tables:
+                    df_like_data = table.extract()
+                    print(df_like_data)
             text = page.get_text("text", sort=True)
             print(text)
         return {
@@ -47,4 +51,4 @@ async def upload_pdf(file: UploadFile):
             "size_bytes": len(contents)
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e)}    
