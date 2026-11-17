@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI, UploadFile, HTTPException, status
 import fitz
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 app = FastAPI(
     title="Research Paper Analysis & Summarization Engine",
     version="0.0.1",
@@ -56,12 +57,19 @@ async def upload_pdf(file: UploadFile):
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(combined_text)
             
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size = 1000,
+            chunk_overlap = 200,
+            length_function = len,
+            is_separator_regex=False,
+        )
+        chunks = text_splitter.create_documents([combined_text])
+        print(f"Total chunks generated: {len(chunks)}")
         return {
             "filename": file.filename,
             "size_bytes": len(contents),
             "total_pages": len(doc),
             "output_txt_file": txt_path
         }
-        
     except Exception as e:
         return {"error": str(e)}
