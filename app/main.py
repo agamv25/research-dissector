@@ -1,32 +1,24 @@
-from fastapi import FastAPI
-import redis
 import os
-from fastapi import UploadFile
-from fastapi import HTTPException, status
+from fastapi import FastAPI, UploadFile, HTTPException, status
 import fitz
-
 app = FastAPI(
     title="Research Paper Analysis & Summarization Engine",
     version="0.0.1",
     description="Backend API for parsing, vector indexing, and summarizing academic papers."
 )
+
+# Ensure an output directory exists for generated text files
+OUTPUT_DIR = "extracted_texts"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-redis_client = redis.Redis.from_url(REDIS_URL)
 
 @app.get("/")
 def read_root():
-    return{
+    return {
         "status": "online",
         "message": "Welcome to the Research Dissector API. System is operational."
     }
-
-@app.get("/health/redis")
-def check_redis():
-    try:
-        redis_client.ping()
-        return {"redis": "connected"}
-    except Exception as e:
-        return {"redis": "disconnected", "error": str(e)}
 
 @app.post("/upload")
 async def upload_pdf(file: UploadFile):
@@ -38,17 +30,38 @@ async def upload_pdf(file: UploadFile):
     try:
         contents = await file.read()  
         doc = fitz.open(stream=contents, filetype="pdf")
-        for page in doc:
+        
+        full_text_accumulator = []
+        
+        for page_num, page in enumerate(doc):
+            # 1. Check for tables
             tabs_finder = page.find_tables()
             if tabs_finder.tables:
                 for table in tabs_finder.tables:
                     df_like_data = table.extract()
-                    print(df_like_data)
+                    full_text_accumulator.append(f"\n[TABLE ON PAGE {page_num + 1}]\n{str(df_like_data)}\n")
+            
+            # 2. Extract main body text with column sorting
             text = page.get_text("text", sort=True)
-            print(text)
+            full_text_accumulator.append(f"\n--- PAGE {page_num + 1} ---\n" + text)
+        
+        # Combine everything into a single continuous string
+        combined_text = "".join(full_text_accumulator)
+        
+        # 3. Write out to a .txt document locally
+        base_name = os.path.splitext(file.filename)[0]
+        txt_filename = f"{base_name}_extracted.txt"
+        txt_path = os.path.join(OUTPUT_DIR, txt_filename)
+        
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(combined_text)
+            
         return {
             "filename": file.filename,
-            "size_bytes": len(contents)
+            "size_bytes": len(contents),
+            "total_pages": len(doc),
+            "output_txt_file": txt_path
         }
+        
     except Exception as e:
-        return {"error": str(e)}    
+        return {"error": str(e)}
