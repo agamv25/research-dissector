@@ -18,3 +18,8 @@ def get_connection():
     except OperationalError as e:
         print(f"Database connection failed: {e}")
         raise
+
+def insert_paper_chunks(filename: str, chunks: list[str], embeddings: list[list[float]]) -> int:
+    if len(chunks) != len(embeddings): raise ValueError("Chunks and embeddings must have the same length.")
+    if not chunks:
+        return 0
