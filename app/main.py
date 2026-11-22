@@ -42,14 +42,11 @@ async def upload_pdf(file: UploadFile):
                     df_like_data = table.extract()
                     full_text_accumulator.append(f"\n[TABLE ON PAGE {page_num + 1}]\n{str(df_like_data)}\n")
             
-            # 2. Extract main body text with column sorting
             text = page.get_text("text", sort=True)
             full_text_accumulator.append(f"\n--- PAGE {page_num + 1} ---\n" + text)
         
-        # Combine everything into a single continuous string
         combined_text = "".join(full_text_accumulator)
         
-        # 3. Write out to a .txt document locally
         base_name = os.path.splitext(file.filename)[0]
         txt_filename = f"{base_name}_extracted.txt"
         txt_path = os.path.join(OUTPUT_DIR, txt_filename)
